@@ -1,0 +1,12 @@
+.hive-metastore
+.kafka_data
+.minio_anomalies
+.spark_warehouse
+.superset
+.venv
+.vscode
+.zookeeper
+__pycache__
+.docs
+plugins
+logs

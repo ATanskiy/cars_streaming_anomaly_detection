@@ -1,0 +1,312 @@
+version: "3.7"
+services:
+
+  # --------------------
+  # Kafka & Confluent
+  # --------------------
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT}
+      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME}
+    volumes:
+      - ./.zookeeper/zk_data:/var/lib/zookeeper/data
+      - ./.zookeeper/zk_logs:/var/lib/zookeeper/log
+    ports:
+      - "22181:2181"
+    networks:
+      - cars_anomalies_net
+
+  kafka_broker:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_JMX_PORT: ${KAFKA_JMX_PORT}
+      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
+    volumes:
+      - ./.kafka_data:/var/lib/kafka/data
+    networks:
+      - cars_anomalies_net
+
+  control_center:
+    image: confluentinc/cp-enterprise-control-center:7.5.0
+    container_name: control_center
+    depends_on:
+      - kafka_broker
+      - zookeeper
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: ${CONTROL_CENTER_BOOTSTRAP_SERVERS}
+      CONTROL_CENTER_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
+      CONTROL_CENTER_REPLICATION_FACTOR: ${CONTROL_CENTER_REPLICATION_FACTOR}
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: ${CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS}
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: ${CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS}
+      CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS: ${CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS}
+    ports:
+      - "9021:9021"
+    networks:
+      - cars_anomalies_net
+
+  # --------------------
+  # Postgres, Hive Metastore 
+  # --------------------
+  postgres:
+    image: 'postgres:latest'
+    hostname: postgres
+    container_name: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./.hive-metastore:/var/lib/postgresql/data
+      - ./docker/airflow_db_init.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cars_anomalies_net
+
+  hive-metastore:
+    image: 'naushadh/hive-metastore'
+    container_name: hive-metastore
+    hostname: hive-metastore
+    ports:
+      - '9083:9083' # Metastore Thrift
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_DB: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      S3_PREFIX: ${S3_PREFIX}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - cars_anomalies_net
+
+  # --------------------
+  # Spark Streaming
+  # --------------------
+  spark:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.spark
+    container_name: spark
+    working_dir: /opt/streaming
+    ports:
+      - "7077:7077" 
+      - "4041:4040"    # Spark UI (different port)
+    volumes:
+      - ./.spark_warehouse:/spark-warehouse
+      - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./configs/spark/hive-site.xml:/opt/spark/conf/hive-site.xml
+      - ./configs:/opt/streaming/configs
+      - ./jobs:/opt/streaming/jobs
+    environment:
+      SPARK_MODE: ${SPARK_MODE_CLIENT}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      PYTHONPATH: /opt/streaming
+    depends_on:
+      - hive-metastore
+      - kafka_broker
+      - minio
+    command: tail -f /dev/null
+    networks:
+      - cars_anomalies_net
+    restart: unless-stopped
+
+  # --------------------
+  # Airflow
+  # --------------------
+  airflow-scheduler:
+    image: apache/airflow:2.8.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    container_name: airflow_scheduler
+    environment:
+      ENV: airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      # Updated connection string to use shared postgres container
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      PYTHONPATH: /opt/airflow
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./jobs:/opt/airflow/jobs
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./.env:/opt/airflow/.env
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cars_anomalies_net
+    command: scheduler
+
+  airflow-webserver:
+    image: apache/airflow:2.8.1
+    container_name: airflow_webserver
+    depends_on:
+      - airflow-scheduler
+    ports:
+      - "8084:8080"
+    environment:
+      ENV: airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      # Updated connection string to use shared postgres container
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      PYTHONPATH: /opt/airflow
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./jobs:/opt/airflow/jobs
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./.env:/opt/airflow/.env
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cars_anomalies_net
+    command: webserver
+
+  # --------------------
+  # MinIO
+  # --------------------
+  minio:
+    image: minio/minio:RELEASE.2022-11-08T05-27-07Z
+    hostname: minio
+    container_name: minio
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - .minio_anomalies:/data
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+      MINIO_API_SELECT_PARQUET: ${MINIO_API_SELECT_PARQUET}
+    command: server --console-address ":9001" /data
+    networks:
+      - cars_anomalies_net
+
+  minio_init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        until mc alias set minio_server http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY}; do
+          echo 'Waiting for MinIO to be ready...'
+          sleep 3
+        done &&
+        mc mb --ignore-existing minio_server/spark
+      "
+    networks:
+      - cars_anomalies_net
+
+  trino:
+    image: trinodb/trino:435
+    container_name: trino
+    hostname: trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs/trino:/etc/trino
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      - hive-metastore
+      - minio
+    networks:
+      - cars_anomalies_net
+
+  dbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: cloudbeaver
+    ports:
+      - "8978:8978"
+    volumes:
+      - cloudbeaver_workspace:/opt/cloudbeaver/workspace
+      - cloudbeaver_config:/opt/cloudbeaver/conf
+    networks:
+      - cars_anomalies_net
+
+  superset:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.superset
+    container_name: superset
+    ports:
+      - "8088:8088"
+    networks:
+      - cars_anomalies_net
+    env_file:
+      - .env
+    volumes:
+      - ./.superset:/app/superset_home
+      - ./configs/superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./configs/superset/databases.yml:/app/databases.yml
+    depends_on:
+      - postgres
+    command: >
+      /bin/bash -c "
+      superset db upgrade &&
+      superset fab list-users | grep admin || superset fab create-admin --username admin --firstname admin --lastname admin --email admin@superset.com --password admin || true &&
+      superset import-datasources -p /app/databases.yml || true &&
+      superset init &&
+      superset run -h 0.0.0.0 -p 8088
+      "
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.telegram_bot
+    container_name: telegram-bot
+    env_file:
+      - .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - AIRFLOW_API_URL=http://airflow-webserver:8080
+      - TRINO_HOST=trino
+      - TRINO_PORT=8080
+    volumes:
+      - ./telegram_bot:/app
+    networks:
+      - cars_anomalies_net
+    depends_on:
+      - trino
+      - airflow-webserver
+    restart: unless-stopped
+      
+volumes:
+  cloudbeaver_workspace:
+  cloudbeaver_config:
+
+networks:
+  cars_anomalies_net:
+    driver: bridge

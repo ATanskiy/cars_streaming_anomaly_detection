@@ -1,0 +1,14 @@
+FROM apache/superset:latest
+
+USER root
+
+# Ensure pip is available inside Superset venv and install needed packages
+RUN /app/.venv/bin/python -m ensurepip --upgrade \
+ && /app/.venv/bin/python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && /app/.venv/bin/python -m pip install --no-cache-dir \
+      psycopg2-binary==2.9.10 \
+      flask-cors \
+      sqlalchemy-trino \
+      trino
+
+USER superset
