@@ -55,10 +55,7 @@ async def trigger_dag(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session = get_airflow_session()
         url = f"{config.AIRFLOW_API_URL}/api/v1/dags/{dag_id}/dagRuns"
         
-        payload = {
-            "conf": {},
-            "logical_date": datetime.utcnow().isoformat()
-        }
+        payload = {}  # Empty payload, let Airflow handle defaults
         
         response = session.post(url, json=payload)
         response.raise_for_status()

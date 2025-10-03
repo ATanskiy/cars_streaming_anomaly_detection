@@ -12,6 +12,10 @@ spark = SparkSession.builder \
     .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog") \
     .config("spark.sql.catalog.iceberg.type", "hive") \
     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+    .config("spark.driver.memory", "4g") \
+    .config("spark.executor.memory", "4g") \
+    .config("spark.sql.autoBroadcastJoinThreshold", "-1") \
+    .config("spark.memory.fraction", "0.6") \
     .enableHiveSupport() \
     .getOrCreate()
 
@@ -26,8 +30,14 @@ for table_name in tables_to_compact:
     
     try:
         rewrite_data_files(spark, catalog_name, schema_name, table_name)
+        spark.sparkContext._jvm.System.gc()
+
         rewrite_manifest_files(spark, catalog_name, schema_name, table_name)
+        spark.sparkContext._jvm.System.gc()
+
         expire_old_snapshots(spark, catalog_name, schema_name, table_name)
+        spark.sparkContext._jvm.System.gc()
+
         remove_orphan_files(spark, catalog_name, schema_name, table_name)
         print(f"✓ Compaction completed for {full_table_name}\n")
         success_count += 1

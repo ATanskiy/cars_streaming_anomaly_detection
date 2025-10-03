@@ -8,8 +8,9 @@ default_args = {
     'start_date': datetime(2024, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 2,
+    'retries': 0,  # No retries
     'retry_delay': timedelta(minutes=5),
+    'execution_timeout': None,
 }
 
 dag = DAG(

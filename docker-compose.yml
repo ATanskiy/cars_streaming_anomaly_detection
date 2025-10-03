@@ -100,6 +100,8 @@ services:
     ports:
       - "7077:7077" 
       - "4041:4040"    # Spark UI (different port)
+    mem_limit: 8g
+    mem_reservation: 6g
     volumes:
       - ./.spark_warehouse:/spark-warehouse
       - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
@@ -257,12 +259,24 @@ services:
       - .env
     volumes:
       - ./telegram_bot:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - cars_anomalies_net
     depends_on:
       - trino
       - airflow-webserver
     restart: unless-stopped
+
+  ngrok:
+    image: ngrok/ngrok:3
+    container_name: ngrok
+    command: http superset:8088 --authtoken=${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    networks:
+      - cars_anomalies_net
+    depends_on:
+      - superset
       
 volumes:
   cloudbeaver_workspace:

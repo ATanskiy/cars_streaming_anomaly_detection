@@ -7,10 +7,12 @@ def rewrite_data_files(spark, catalog_name, schema_name, table_name):
     print(f"Starting data file compaction for {full_table_name}...")
     spark.sql(f"""
         CALL {catalog_name}.system.rewrite_data_files(
-            table => '{schema_name}.{table_name}',
+            table => '{catalog_name}.{schema_name}.{table_name}',
             options => map(
                 'target-file-size-bytes', '134217728',
-                'min-file-size-bytes', '67108864'
+                'min-file-size-bytes', '67108864',
+                'partial-progress.enabled', 'true',
+                'partial-progress.max-commits', '10'
             )
         )
     """)
