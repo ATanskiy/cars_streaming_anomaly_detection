@@ -1,11 +1,8 @@
-import logging
-import requests
-from datetime import datetime
+import logging, requests, config
 from telegram import Update
 from telegram.ext import ContextTypes
 from requests.auth import HTTPBasicAuth
 
-import config
 
 logger = logging.getLogger(__name__)
 

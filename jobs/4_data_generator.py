@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 import json, time, random, uuid
 from kafka import KafkaProducer
 from datetime import datetime
-from configs.spark.jobs.constants import topic_sensors_sample, kafka_bootstrap_server
+from configs.constants import TOPIC_SENSORS_SAMPLE, KAFKA_BOOTSTRAP_SERVER
 
 #1 Create Spark session with Iceberg and S3A configuration
 spark = SparkSession.builder \
@@ -11,7 +11,7 @@ spark = SparkSession.builder \
 
 #2 Define the producer
 producer = KafkaProducer(
-    bootstrap_servers=kafka_bootstrap_server,
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
@@ -22,7 +22,7 @@ car_ids = [row.car_id for row in cars_df.collect()]
 print(f"Loaded {len(car_ids)} cars from dims.cars table")
 
 #4 Send random car events to Kafka
-print(f"Starting to send data to Kafka topic: {topic_sensors_sample}")
+print(f"Starting to send data to Kafka topic: {TOPIC_SENSORS_SAMPLE}")
 print("Sending one random car event every second...")
 
 try:
@@ -37,7 +37,7 @@ try:
             "gear": random.randint(1, 7)
         }
 
-        producer.send(topic_sensors_sample, value=event_data)
+        producer.send(TOPIC_SENSORS_SAMPLE, value=event_data)
         print(f"Sent event: {event_data}")
         time.sleep(1)
 

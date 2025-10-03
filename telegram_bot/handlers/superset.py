@@ -1,24 +1,17 @@
-import logging
-import requests
+import logging, requests, config
 from telegram import Update
 from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 
-SUPERSET_URL = "http://superset:8088"
-SUPERSET_PUBLIC_URL = "https://anneliese-unadmissive-springingly.ngrok-free.dev"
-SUPERSET_USER = "admin"
-SUPERSET_PASSWORD = "admin"
-
-
 def get_superset_token():
     """Get access token from Superset."""
     try:
         response = requests.post(
-            f"{SUPERSET_URL}/api/v1/security/login",
+            f"{config.SUPERSET_URL}/api/v1/security/login",
             json={
-                "username": SUPERSET_USER,
-                "password": SUPERSET_PASSWORD,
+                "username": config.SUPERSET_USER,
+                "password": config.SUPERSET_PASSWORD,
                 "provider": "db",
                 "refresh": True
             },
@@ -41,7 +34,7 @@ async def list_dashboards(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         headers = {"Authorization": f"Bearer {token}"}
         response = requests.get(
-            f"{SUPERSET_URL}/api/v1/dashboard/",
+            f"{config.SUPERSET_URL}/api/v1/dashboard/",
             headers=headers,
             timeout=5
         )
@@ -57,7 +50,7 @@ async def list_dashboards(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for dash in dashboards[:10]:
             title = dash.get('dashboard_title', 'Untitled')
             dash_id = dash.get('id')
-            url = f"{SUPERSET_PUBLIC_URL}/superset/dashboard/{dash_id}/"
+            url = f"{config.SUPERSET_PUBLIC_URL}/superset/dashboard/{dash_id}/"
             message += f"• {title}\n  {url}\n\n"
         
         await update.message.reply_text(message)

@@ -1,9 +1,7 @@
-import logging
-import trino
+import logging, trino, config
 from telegram import Update
 from telegram.ext import ContextTypes
 
-import config
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +29,9 @@ async def list_schemas(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         message = f"📂 *Schemas in {config.TRINO_CATALOG}:*\n\n"
         for schema in schemas:
-            schema_name = schema[0]
-            if schema_name not in ['information_schema']:
-                message += f"• `{schema_name}`\n"
+            SCHEMA_NAME = schema[0]
+            if SCHEMA_NAME not in ['information_schema']:
+                message += f"• `{SCHEMA_NAME}`\n"
         
         message += f"\nUse `/tables <schema>` to list tables"
         
@@ -46,7 +44,7 @@ async def list_schemas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def list_tables(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: /tables <schema_name>")
+        await update.message.reply_text("Usage: /tables <SCHEMA_NAME>")
         return
     
     schema = context.args[0]

@@ -1,9 +1,9 @@
-import logging
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+import logging, config
 from telegram.ext import ContextTypes
-
-import config
 from handlers import airflow, trino_queries, spark, superset
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, \
+      InlineKeyboardMarkup
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +102,10 @@ async def show_schemas_with_buttons(update: Update, context: ContextTypes.DEFAUL
         
         keyboard = []
         for schema in schemas:
-            schema_name = schema[0]
-            if schema_name not in ['information_schema']:
+            SCHEMA_NAME = schema[0]
+            if SCHEMA_NAME not in ['information_schema']:
                 keyboard.append([
-                    InlineKeyboardButton(f"📂 {schema_name}", callback_data=f"schema_{schema_name}")
+                    InlineKeyboardButton(f"📂 {SCHEMA_NAME}", callback_data=f"schema_{SCHEMA_NAME}")
                 ])
         
         reply_markup = InlineKeyboardMarkup(keyboard)

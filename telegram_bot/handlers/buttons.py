@@ -1,10 +1,8 @@
-import logging
-from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import logging, config
 from telegram.ext import ContextTypes
-
-import config
 from handlers import airflow, trino_queries, menus
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+
 
 logger = logging.getLogger(__name__)
 
@@ -106,30 +104,30 @@ async def handle_dag_status(query, context, data):
 
 
 async def handle_schema_selected(query, context, data):
-    schema_name = data.replace("schema_", "")
-    await query.edit_message_text(f"Loading tables in `{schema_name}`...", parse_mode='Markdown')
+    SCHEMA_NAME = data.replace("schema_", "")
+    await query.edit_message_text(f"Loading tables in `{SCHEMA_NAME}`...", parse_mode='Markdown')
     
     try:
         conn = trino_queries.get_trino_connection()
         cursor = conn.cursor()
-        cursor.execute(f"SHOW TABLES IN {config.TRINO_CATALOG}.{schema_name}")
+        cursor.execute(f"SHOW TABLES IN {config.TRINO_CATALOG}.{SCHEMA_NAME}")
         tables = cursor.fetchall()
         
         if not tables:
-            await query.edit_message_text(f"No tables found in schema `{schema_name}`.")
+            await query.edit_message_text(f"No tables found in schema `{SCHEMA_NAME}`.")
             return
         
         keyboard = []
         for table in tables[:20]:
             table_name = table[0]
             keyboard.append([
-                InlineKeyboardButton(f"📊 {table_name}", callback_data=f"table_{schema_name}.{table_name}")
+                InlineKeyboardButton(f"📊 {table_name}", callback_data=f"table_{SCHEMA_NAME}.{table_name}")
             ])
         keyboard.append([InlineKeyboardButton("« Back", callback_data="action_schemas")])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            f"Tables in `{schema_name}`:",
+            f"Tables in `{SCHEMA_NAME}`:",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
@@ -203,6 +201,6 @@ async def handle_action_menu(query, context, data):
     if data == "action_schemas":
         await menus.show_schemas_with_buttons(query, context)
     elif data == "action_browse_tables":
-        await query.edit_message_text("Please use /tables <schema_name> or select a schema from the menu.")
+        await query.edit_message_text("Please use /tables <SCHEMA_NAME> or select a schema from the menu.")
     elif data == "action_custom_query":
         await query.edit_message_text("Use: /query SELECT * FROM schema.table LIMIT 10")

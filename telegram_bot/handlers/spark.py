@@ -1,5 +1,4 @@
-import logging
-import subprocess
+import logging, subprocess
 from telegram import Update
 from telegram.ext import ContextTypes
 

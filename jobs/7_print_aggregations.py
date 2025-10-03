@@ -2,8 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, when, window, \
     count, sum as spark_sum, max as spark_max
 from pyspark.sql.types import TimestampType
-from configs.spark.jobs.constants import topic_alert_data as topic_input, kafka_bootstrap_servers
-from configs.spark.jobs.schemas import enriched_schema
+from configs.constants import TOPIC_ALERT_DATA as TOPIC_INPUT, KAFKA_BOOTSTRAP_SERVERS
+from configs.spark.jobs.schemas import ENRICHED_SCHEMA
 
 #1 Create Spark session with Iceberg and S3A configuration
 spark = SparkSession.builder \
@@ -13,15 +13,15 @@ spark = SparkSession.builder \
 #2 Listen to enriched data from Kafka
 samples_enriched = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("subscribe", topic_input) \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", TOPIC_INPUT) \
     .option("startingOffsets", "earliest") \
     .option("failOnDataLoss", "false") \
     .load()
 
 #3 Parse the enriched data
 parsed_alerts_df = samples_enriched \
-    .select(from_json(col("value").cast("string"), enriched_schema).alias("data")) \
+    .select(from_json(col("value").cast("string"), ENRICHED_SCHEMA).alias("data")) \
     .select("data.*") \
     .withColumn("event_time", col("event_time").cast(TimestampType()))
 

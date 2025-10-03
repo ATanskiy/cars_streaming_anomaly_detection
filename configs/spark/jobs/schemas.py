@@ -1,7 +1,7 @@
 from pyspark.sql.types import StructType, StructField, StringType, \
       IntegerType, LongType, TimestampType
 
-sensor_schema = StructType([
+SENSOR_SCHEMA = StructType([
     StructField("event_id", StringType(), True),
     StructField("event_time", TimestampType(), True),
     StructField("car_id", LongType(), True),
@@ -10,7 +10,7 @@ sensor_schema = StructType([
     StructField("gear", IntegerType(), True)
 ])
 
-enriched_schema = StructType([
+ENRICHED_SCHEMA = StructType([
     StructField("event_id", StringType(), True),
     StructField("event_time", TimestampType(), True),
     StructField("car_id", LongType(), True),

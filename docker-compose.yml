@@ -233,11 +233,14 @@ services:
       - "8088:8088"
     networks:
       - cars_anomalies_net
+    environment:
+      - PYTHONPATH=/app/pythonpath
     env_file:
       - .env
     volumes:
       - ./.superset:/app/superset_home
       - ./configs/superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./configs/constants.py:/app/pythonpath/constants.py
       - ./configs/superset/databases.yml:/app/databases.yml
     depends_on:
       - postgres

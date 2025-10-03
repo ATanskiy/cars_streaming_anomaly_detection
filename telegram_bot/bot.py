@@ -1,9 +1,10 @@
 import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
-
 import config
+from telegram import Update
 from handlers import airflow, trino_queries, buttons, menus, spark, superset
+from telegram.ext import Application, CommandHandler, MessageHandler, \
+      CallbackQueryHandler, ContextTypes, filters
+
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

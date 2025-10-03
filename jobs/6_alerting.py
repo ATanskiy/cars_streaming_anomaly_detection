@@ -1,9 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, to_json, struct, when
-from configs.spark.jobs.constants import topic_sensors_enriched as topic_input, \
-    topic_alert_data as topic_output, kafka_bootstrap_servers, schema_name, \
-        table_cars_enriched as table_name
-from configs.spark.jobs.schemas import enriched_schema
+from configs.constants import TOPIC_SENSORS_ENRICHED as TOPIC_INPUT, \
+    TOPIC_ALERT_DATA as TOPIC_OUTPUT, KAFKA_BOOTSTRAP_SERVERS, SCHEMA_NAME, \
+        TABLE_CARS_ENRICHED as TABLE_NAME
+from configs.spark.jobs.schemas import ENRICHED_SCHEMA
 from configs.spark.jobs.create_tables import create_cars_enriched_table
 
 #1 Create Spark session with Iceberg and S3A configuration
@@ -14,15 +14,15 @@ spark = SparkSession.builder \
 #2 Listen to enriched data from Kafka
 samples_enriched = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("subscribe", topic_input) \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", TOPIC_INPUT) \
     .option("startingOffsets", "earliest") \
     .option("failOnDataLoss", "false") \
     .load()
 
 #3 Parse the enriched data
 parsed_enriched_df = samples_enriched \
-    .select(from_json(col("value").cast("string"), enriched_schema).alias("data")) \
+    .select(from_json(col("value").cast("string"), ENRICHED_SCHEMA).alias("data")) \
     .select("data.*") \
     .withColumn("is_alert", 
         when(
@@ -34,7 +34,7 @@ parsed_enriched_df = samples_enriched \
     )
 
 #4 Create an Iceberg table for alerts if not exists
-create_cars_enriched_table(spark, schema_name, table_name)
+create_cars_enriched_table(spark, SCHEMA_NAME, TABLE_NAME)
 
 #5 Write data with alerts to the Iceberg table
 query1 = parsed_enriched_df \
@@ -52,9 +52,9 @@ query2 = alert_df \
     .select(to_json(struct("*")).alias("value")) \
     .writeStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("topic", topic_output) \
-    .option("checkpointLocation", f"s3a://spark/data/checkpoints/{topic_output}") \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("topic", TOPIC_OUTPUT) \
+    .option("checkpointLocation", f"s3a://spark/data/checkpoints/{TOPIC_OUTPUT}") \
     .outputMode("append") \
     .start()
 
