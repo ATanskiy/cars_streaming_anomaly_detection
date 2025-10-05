@@ -164,3 +164,42 @@ async def recent_runs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error fetching recent runs: {e}")
         await update.message.reply_text(f"❌ Error: {str(e)}")
+
+
+async def kill_dag(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /kill <dag_id> <run_id>")
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Please provide both dag_id and run_id\nUsage: /kill <dag_id> <run_id>")
+        return
+    
+    dag_id = context.args[0]
+    run_id = context.args[1]
+    
+    try:
+        session = get_airflow_session()
+        # PATCH request to update the DAG run state to 'failed'
+        url = f"{config.AIRFLOW_API_URL}/api/v1/dags/{dag_id}/dagRuns/{run_id}"
+        
+        payload = {"state": "failed"}
+        
+        response = session.patch(url, json=payload)
+        response.raise_for_status()
+        
+        await update.message.reply_text(
+            f"🛑 DAG run killed successfully!\n"
+            f"DAG: `{dag_id}`\n"
+            f"Run ID: `{run_id}`",
+            parse_mode='Markdown'
+        )
+        
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            await update.message.reply_text(f"❌ DAG `{dag_id}` or run `{run_id}` not found.")
+        else:
+            await update.message.reply_text(f"❌ Error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error killing DAG: {e}")
+        await update.message.reply_text(f"❌ Error: {str(e)}")

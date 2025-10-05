@@ -92,3 +92,20 @@ def create_cars_enriched_table(spark, SCHEMA_NAME, table_name):
         LOCATION '{table_location}'
         """)
     print(f"Table {SCHEMA_NAME}.{table_name} created at {table_location}")
+
+
+def create_cars_raw_table(spark, SCHEMA_NAME, table_name):
+
+    table_location = create_location(SCHEMA_NAME, table_name)
+
+    spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS cars_raw.cars_raw (
+        id STRING,
+        json_data STRING,
+        timestamp TIMESTAMP
+        )
+        USING iceberg
+        PARTITIONED BY (days(timestamp))
+        LOCATION '{table_location}'
+        """)
+    print(f"Table {SCHEMA_NAME}.{table_name} created at {table_location}")

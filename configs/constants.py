@@ -1,12 +1,14 @@
 # Catalogs/Schemas names
 CATALOG_NAME = "iceberg"
 SCHEMA_NAME = "dims"
+RAW_SCHEMA_NAME = 'cars_raw'
 
 # Table names
 TABLE_CAR_MODELS = "car_models"
 TABLE_CAR_COLORS = "car_colors"
 TABLE_CARS = "cars"
 TABLE_CARS_ENRICHED = "cars_enriched"
+TABLE_CARS_RAW = "cars_raw"
 
 # Cars table columns
 TABLE_CAR_MODELS_COLUMNS = ["model_id", "car_brand", "car_model"]

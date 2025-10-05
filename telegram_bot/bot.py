@@ -23,13 +23,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/dags - List all DAGs\n"
         "/run <dag_id> - Trigger a DAG\n"
         "/status <dag_id> - Check DAG status\n"
-        "/recent - Recent DAG runs\n\n"
-        "📊 *Data Commands:*\n"
-        "/schemas - List available schemas\n"
-        "/tables <schema> - List tables in schema\n"
-        "/query <sql> - Run SQL query\n"
-        "/count <table> - Count rows in table\n\n"
-        "Or use the buttons below!",
+        "/kill <dag_id> <run_id> - Kill a running DAG\n"
+        "/recent - Recent DAG runs\n\n",
         parse_mode='Markdown'
     )
 
@@ -52,6 +47,7 @@ def main():
     application.add_handler(CommandHandler("dags", airflow.list_dags))
     application.add_handler(CommandHandler("run", airflow.trigger_dag))
     application.add_handler(CommandHandler("status", airflow.dag_status))
+    application.add_handler(CommandHandler("kill", airflow.kill_dag))
     application.add_handler(CommandHandler("recent", airflow.recent_runs))
     application.add_handler(CommandHandler("schemas", trino_queries.list_schemas))
     application.add_handler(CommandHandler("tables", trino_queries.list_tables))

@@ -35,12 +35,19 @@ create_car_colors = BashOperator(
     dag=dag,
 )
 
-# Task 3: Create sales table
-create_sales = BashOperator(
-    task_id='create_sales',
+# Task 3: Create cars table
+create_cars = BashOperator(
+    task_id='create_cars',
     bash_command='docker exec spark spark-submit /opt/streaming/jobs/3_cars.py',
     dag=dag,
 )
 
+# Task 4: Create cars_raw table
+create_cars_raw = BashOperator(
+    task_id='create_cars_raw',
+    bash_command='docker exec spark spark-submit /opt/streaming/jobs/3_1_cars_raw.py',
+    dag=dag,
+)
+
 # Define task dependencies (chain them)
-create_car_models >> create_car_colors >> create_sales
+create_car_models >> create_car_colors >> create_cars >> create_cars_raw
