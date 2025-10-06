@@ -1,10 +1,18 @@
+"""
+Real-time car sensor data enrichment pipeline.
+Reads raw sensor events from Kafka, enriches them with car, model, and color
+dimension data through broadcast joins, calculates expected gear based on speed,
+and outputs enriched data to Kafka while simultaneously writing raw data to
+an Iceberg table for auditing and reprocessing purposes.
+"""
+
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, \
-      broadcast, round as spark_round, to_json, struct
+from pyspark.sql.functions import col, from_json, expr,\
+      broadcast, round as spark_round, to_json, struct, current_timestamp
 from pyspark.sql.types import IntegerType
-from configs.spark.jobs.schemas import sensor_schema
-from configs.spark.jobs.constants import topic_sensors_sample as topic_input, \
-    topic_sensors_enriched as topic_output, kafka_bootstrap_servers
+from configs.spark.jobs.schemas import SENSOR_SCHEMA
+from configs.constants import TOPIC_SENSORS_SAMPLE as TOPIC_INPUT, \
+    TOPIC_SENSORS_ENRICHED as TOPIC_OUTPUT, KAFKA_BOOTSTRAP_SERVERS
 
 #1 Create Spark session
 spark = SparkSession.builder \
@@ -19,14 +27,20 @@ car_colors_df = spark.sql("SELECT color_id, color_name FROM dims.car_colors")
 #3 Read from Kafka and parse JSON
 sensor_samples = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("subscribe", topic_input) \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", TOPIC_INPUT) \
     .option("startingOffsets", "earliest") \
     .option("failOnDataLoss", "false") \
     .load()
 
+raw_sensor_samples = sensor_samples.select(
+    expr("uuid()").alias("id"),
+    col("value").cast("string").alias("json_data"), 
+    current_timestamp().alias("timestamp")
+)
+
 cars_parsed_df = sensor_samples \
-    .select(from_json(col("value").cast("string"), schema=sensor_schema).alias("data")) \
+    .select(from_json(col("value").cast("string"), schema=SENSOR_SCHEMA).alias("data")) \
     .select("data.*")
 
 #4 Enrich the data by joining with the dimension tables
@@ -50,17 +64,27 @@ cars_enriched_df = cars_parsed_df \
     )
 
 #5 Push enriched data to Kafka
-query = cars_enriched_df \
+query1 = cars_enriched_df \
     .select(to_json(struct("*")).alias("value")) \
     .writeStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("topic", topic_output) \
-    .option("checkpointLocation", f"s3a://spark/data/checkpoints/{topic_output}") \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("topic", TOPIC_OUTPUT) \
+    .option("checkpointLocation", f"s3a://spark/data/checkpoints/{TOPIC_OUTPUT}") \
     .outputMode("append") \
     .start()
 
-query.awaitTermination()
+#6 write raw data into an iceberg table
+query2 = raw_sensor_samples \
+    .writeStream \
+    .format("iceberg") \
+    .outputMode("append") \
+    .option("checkpointLocation", "s3a://spark/data/checkpoints/cars-raw") \
+    .toTable("cars_raw.cars_raw")
+
+#7 keep the queries up
+query1.awaitTermination()
+query2.awaitTermination()
 
 # #docker exec -it spark bash
 # #spark-submit 5_enriching.py

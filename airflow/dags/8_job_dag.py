@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from configs.constants import TABLES_TO_COMPACT
 
 default_args = {
     'owner': 'airflow',
@@ -22,8 +23,11 @@ dag = DAG(
     tags=['maintenance', 'iceberg', 'compaction'],
 )
 
-compact_tables = BashOperator(
-    task_id='compact_iceberg_tables',
-    bash_command='docker exec spark spark-submit /opt/streaming/jobs/8_table_compaction.py',
-    dag=dag,
-)
+for schema_name, table_name in TABLES_TO_COMPACT.items():
+    task_id = f'compact_{schema_name}_{table_name}'
+    
+    BashOperator(
+        task_id=task_id,
+        bash_command=f'docker exec spark spark-submit /opt/streaming/jobs/8_table_compaction.py {schema_name} {table_name}',
+        dag=dag,
+    )

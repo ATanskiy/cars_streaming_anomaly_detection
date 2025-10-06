@@ -8,8 +8,9 @@ default_args = {
     'start_date': datetime(2024, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 2,
+    'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'execution_timeout': None,
 }
 
 dag = DAG(
@@ -23,6 +24,6 @@ dag = DAG(
 
 aggregations_task = BashOperator(
     task_id='compute_aggregations',
-    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py',
+    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py "{{ dag_run.conf.get(\'telegram_chat_id\') }}"',
     dag=dag,
 )

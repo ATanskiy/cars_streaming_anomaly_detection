@@ -7,9 +7,8 @@ services:
   zookeeper:
     container_name: zookeeper
     image: confluentinc/cp-zookeeper:7.5.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT}
-      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME}
+    env_file:
+      - .env
     volumes:
       - ./.zookeeper/zk_data:/var/lib/zookeeper/data
       - ./.zookeeper/zk_logs:/var/lib/zookeeper/log
@@ -26,16 +25,13 @@ services:
     ports:
       - "9092:9092"
       - "29092:29092"
+    env_file:
+      - .env
     environment:
-      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
-      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
-      KAFKA_JMX_PORT: ${KAFKA_JMX_PORT}
-      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
     volumes:
       - ./.kafka_data:/var/lib/kafka/data
     networks:
@@ -47,13 +43,8 @@ services:
     depends_on:
       - kafka_broker
       - zookeeper
-    environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: ${CONTROL_CENTER_BOOTSTRAP_SERVERS}
-      CONTROL_CENTER_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
-      CONTROL_CENTER_REPLICATION_FACTOR: ${CONTROL_CENTER_REPLICATION_FACTOR}
-      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: ${CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS}
-      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: ${CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS}
-      CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS: ${CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS}
+    env_file:
+      - .env
     ports:
       - "9021:9021"
     networks:
@@ -63,15 +54,13 @@ services:
   # Postgres, Hive Metastore 
   # --------------------
   postgres:
-    image: 'postgres:latest'
+    image: 'postgres:17'
     hostname: postgres
     container_name: postgres
     ports:
       - '5432:5432'
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - .env
     volumes:
       - ./.hive-metastore:/var/lib/postgresql/data
       - ./docker/airflow_db_init.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -89,16 +78,8 @@ services:
     hostname: hive-metastore
     ports:
       - '9083:9083' # Metastore Thrift
-    environment:
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_DB: ${POSTGRES_DB}
-      DATABASE_USER: ${POSTGRES_USER}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-      S3_PREFIX: ${S3_PREFIX}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    env_file:
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,6 +100,8 @@ services:
     ports:
       - "7077:7077" 
       - "4041:4040"    # Spark UI (different port)
+    mem_limit: 8g
+    mem_reservation: 6g
     volumes:
       - ./.spark_warehouse:/spark-warehouse
       - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
@@ -148,19 +131,14 @@ services:
       postgres:
         condition: service_healthy
     container_name: airflow_scheduler
-    environment:
-      ENV: airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      # Updated connection string to use shared postgres container
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      PYTHONPATH: /opt/airflow
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./jobs:/opt/airflow/jobs
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./configs:/opt/airflow/configs
       - ./.env:/opt/airflow/.env
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -174,19 +152,14 @@ services:
       - airflow-scheduler
     ports:
       - "8084:8080"
-    environment:
-      ENV: airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      # Updated connection string to use shared postgres container
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      PYTHONPATH: /opt/airflow
+    env_file:
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./jobs:/opt/airflow/jobs
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./configs:/opt/airflow/configs
       - ./.env:/opt/airflow/.env
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -206,9 +179,7 @@ services:
     volumes:
       - .minio_anomalies:/data
     environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
-      MINIO_API_SELECT_PARQUET: ${MINIO_API_SELECT_PARQUET}
+      - .env
     command: server --console-address ":9001" /data
     networks:
       - cars_anomalies_net
@@ -236,9 +207,8 @@ services:
       - "8080:8080"
     volumes:
       - ./configs/trino:/etc/trino
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    env_file:
+      - .env
     depends_on:
       - hive-metastore
       - minio
@@ -246,7 +216,7 @@ services:
       - cars_anomalies_net
 
   dbeaver:
-    image: dbeaver/cloudbeaver:latest
+    image: dbeaver/cloudbeaver:25.2.1
     container_name: cloudbeaver
     ports:
       - "8978:8978"
@@ -265,11 +235,14 @@ services:
       - "8088:8088"
     networks:
       - cars_anomalies_net
+    environment:
+      - PYTHONPATH=/app/pythonpath
     env_file:
       - .env
     volumes:
       - ./.superset:/app/superset_home
       - ./configs/superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./configs/constants.py:/app/pythonpath/constants.py
       - ./configs/superset/databases.yml:/app/databases.yml
     depends_on:
       - postgres
@@ -289,19 +262,26 @@ services:
     container_name: telegram-bot
     env_file:
       - .env
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - AIRFLOW_API_URL=http://airflow-webserver:8080
-      - TRINO_HOST=trino
-      - TRINO_PORT=8080
     volumes:
       - ./telegram_bot:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - cars_anomalies_net
     depends_on:
       - trino
       - airflow-webserver
     restart: unless-stopped
+
+  ngrok:
+    image: ngrok/ngrok:3
+    container_name: ngrok
+    command: http superset:8088 --authtoken=${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    networks:
+      - cars_anomalies_net
+    depends_on:
+      - superset
       
 volumes:
   cloudbeaver_workspace:

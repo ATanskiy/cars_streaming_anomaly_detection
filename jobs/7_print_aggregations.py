@@ -1,11 +1,20 @@
+"""
+Real-time alert aggregation and Telegram notification pipeline.
+Reads alert events from Kafka, aggregates them in 1-minute windows with
+10-second watermark, calculates alert counts by car color and maximum sensor
+values (speed, gear, RPM), and sends aggregated summaries to Telegram using
+foreachBatch processing for batch notifications.
+"""
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, when, window, \
     count, sum as spark_sum, max as spark_max
 from pyspark.sql.types import TimestampType
-from configs.spark.jobs.constants import topic_alert_data as topic_input, kafka_bootstrap_servers
-from configs.spark.jobs.schemas import enriched_schema
+from configs.constants import TOPIC_ALERT_DATA as TOPIC_INPUT, KAFKA_BOOTSTRAP_SERVERS
+from configs.spark.jobs.schemas import ENRICHED_SCHEMA
+from jobs.tg_functions_job_7 import send_batch
 
-#1 Create Spark session with Iceberg and S3A configuration
+#1 Create Spark session
 spark = SparkSession.builder \
     .appName("AlertCounter") \
     .getOrCreate()
@@ -13,19 +22,19 @@ spark = SparkSession.builder \
 #2 Listen to enriched data from Kafka
 samples_enriched = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", kafka_bootstrap_servers) \
-    .option("subscribe", topic_input) \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", TOPIC_INPUT) \
     .option("startingOffsets", "earliest") \
     .option("failOnDataLoss", "false") \
     .load()
 
 #3 Parse the enriched data
 parsed_alerts_df = samples_enriched \
-    .select(from_json(col("value").cast("string"), enriched_schema).alias("data")) \
+    .select(from_json(col("value").cast("string"), ENRICHED_SCHEMA).alias("data")) \
     .select("data.*") \
     .withColumn("event_time", col("event_time").cast(TimestampType()))
 
-#4 Create an Iceberg table for alerts if not exists
+#4 Aggregate
 aggregated_df = parsed_alerts_df \
     .withWatermark("event_time", "10 seconds") \
     .groupBy(window(col("event_time"), "1 minute")) \
@@ -39,18 +48,14 @@ aggregated_df = parsed_alerts_df \
         spark_max("rpm").alias("maximum_rpm")
     )
 
-#5 Display data to console
+#5 Write stream - USE foreachBatch instead of console!
 query = aggregated_df \
     .writeStream \
-    .format("console") \
+    .foreachBatch(send_batch) \
     .outputMode("update") \
     .trigger(processingTime="1 minute") \
-    .option("truncate", False) \
-    .option("checkpointLocation", "/tmp/checkpoints/alerts") \
+    .option("checkpointLocation", "/tmp/checkpoints/alerts_telegram") \
     .start()
 
-#6 Await termination of both streams
+#6 Await termination
 query.awaitTermination()
-
-# #docker exec -it spark bash
-# #spark-submit 7_print_aggregations.py

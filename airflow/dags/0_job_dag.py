@@ -13,16 +13,13 @@ default_args = {
 }
 
 dag = DAG(
-    '0_create_schema_with_trino',
+    '0_create_schemas_with_trino',
     default_args=default_args,
     description='Create Iceberg schemas using Trino CLI',
-    schedule_interval=None,  # Manual trigger only
+    schedule_interval=None,
     catchup=False,
     tags=['setup', 'schema', 'trino'],
 )
-
-# Assuming your Trino container is named 'trino' or 'trino-coordinator'
-# Adjust the container name based on your docker-compose.yml
 
 create_dims_schema = BashOperator(
     task_id='create_dims_schema',
@@ -32,4 +29,12 @@ create_dims_schema = BashOperator(
     dag=dag,
 )
 
-create_dims_schema
+create_cars_raw_schema = BashOperator(
+    task_id='create_cars_raw_schema',
+    bash_command="""
+        docker exec trino trino --execute "CREATE SCHEMA IF NOT EXISTS iceberg.cars_raw WITH (location = 's3a://spark/data/cars_raw')"
+    """,
+    dag=dag,
+)
+
+create_dims_schema >> create_cars_raw_schema

@@ -1,6 +1,14 @@
+"""
+Sample data generation functions for dimension tables.
+Creates static reference data for car models (7 brands/models), car colors
+(7 colors), and generates 20 random car records with unique IDs linking to
+model and color dimensions. Uses random assignment for driver IDs and
+foreign key references to maintain referential integrity.
+"""
+
 import random
-from .constants import table_car_models_columns, table_car_colors_columns, \
-      table_cars_columns
+from ...constants import TABLE_CAR_MODELS_COLUMNS, TABLE_CAR_COLORS_COLUMNS, \
+      TABLE_CARS_COLUMNS
 
 def generate_car_models_data(spark):
 
@@ -14,7 +22,7 @@ def generate_car_models_data(spark):
         (7, 'Kia', 'Picanto')
     ]
 
-    df = spark.createDataFrame(data, schema=table_car_models_columns)
+    df = spark.createDataFrame(data, schema=TABLE_CAR_MODELS_COLUMNS)
     return df
 
 
@@ -29,7 +37,7 @@ def generate_car_colors_data(spark):
         (6, 'Blue'),
         (7, 'Pink')
     ]
-    df = spark.createDataFrame(data, schema=table_car_colors_columns)
+    df = spark.createDataFrame(data, schema=TABLE_CAR_COLORS_COLUMNS)
     return df
 
 def generate_cars_table_data(spark):
@@ -46,6 +54,6 @@ def generate_cars_table_data(spark):
         data.append((car_id, driver_id, model_id, color_id))
 
     # Create DataFrame
-    df = spark.createDataFrame(data, schema=table_cars_columns)
+    df = spark.createDataFrame(data, schema=TABLE_CARS_COLUMNS)
 
     return df
