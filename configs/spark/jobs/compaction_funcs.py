@@ -1,3 +1,11 @@
+"""
+Iceberg table maintenance utility functions.
+Provides core operations for optimizing Iceberg tables: data file compaction
+to merge small files into 128MB targets, manifest file rewriting for metadata
+optimization, snapshot expiration with configurable retention policies, and
+orphan file cleanup to remove unreferenced data files from storage.
+"""
+
 from datetime import datetime, timedelta
 
 def rewrite_data_files(spark, CATALOG_NAME, SCHEMA_NAME, table_name):
@@ -44,14 +52,16 @@ def expire_old_snapshots(spark, CATALOG_NAME, SCHEMA_NAME, table_name, days=1, r
     print(f"✓ Snapshots expired for {full_table_name} (older than {days} days, kept last {retain_last})")
 
 
-def remove_orphan_files(spark, CATALOG_NAME, SCHEMA_NAME, table_name):
+def remove_orphan_files(spark, CATALOG_NAME, SCHEMA_NAME, table_name, days=1):
     """Remove orphan files."""
     full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{table_name}"
+    older_than = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
     
     spark.sql(f"""
         CALL {CATALOG_NAME}.system.remove_orphan_files(
             table => '{SCHEMA_NAME}.{table_name}',
-            older_than => TIMESTAMP '2999-01-01 00:00:00'
+            older_than => TIMESTAMP '{older_than}'
         )
     """)
-    print(f"✓ Orphan files removed for {full_table_name}")
+    print(f"✓ Orphan files removed for {full_table_name} (older than {days} days)")

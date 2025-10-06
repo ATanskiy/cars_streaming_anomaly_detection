@@ -1,3 +1,11 @@
+"""
+Iceberg table schema definitions and creation functions.
+Defines and creates all project tables including dimension tables (car_models,
+car_colors, cars), enriched sensor data table with daily partitioning and alert
+flags, and raw ingestion table for audit trails. All tables use Iceberg format v2
+with Snappy compression and S3 storage locations.
+"""
+
 def create_location(SCHEMA_NAME, table_name):
     return f's3a://spark/data/{SCHEMA_NAME}/{table_name}'
 

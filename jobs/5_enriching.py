@@ -1,3 +1,11 @@
+"""
+Real-time car sensor data enrichment pipeline.
+Reads raw sensor events from Kafka, enriches them with car, model, and color
+dimension data through broadcast joins, calculates expected gear based on speed,
+and outputs enriched data to Kafka while simultaneously writing raw data to
+an Iceberg table for auditing and reprocessing purposes.
+"""
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, expr,\
       broadcast, round as spark_round, to_json, struct, current_timestamp

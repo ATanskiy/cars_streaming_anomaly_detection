@@ -1,3 +1,11 @@
+"""
+Airflow DAG management handler for Telegram bot.
+Provides commands to list, trigger, monitor, and kill Airflow DAGs via
+REST API. Authenticates using basic auth, formats responses with status
+emojis, and handles errors gracefully. Supports listing all DAGs, checking
+recent runs, viewing DAG execution status, and stopping running workflows.
+"""
+
 import logging, requests, config
 from telegram import Update
 from telegram.ext import ContextTypes

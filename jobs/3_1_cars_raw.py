@@ -1,3 +1,9 @@
+"""
+Creates the cars_raw Iceberg table schema.
+Initializes an empty raw data table without populating it with data.
+Used as a landing zone for raw car data ingestion.
+"""
+
 from pyspark.sql import SparkSession
 from configs.constants import RAW_SCHEMA_NAME as SCHEMA_NAME, \
     TABLE_CARS_RAW as TABLE_NAME

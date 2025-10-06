@@ -138,6 +138,7 @@ services:
       - ./jobs:/opt/airflow/jobs
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./configs:/opt/airflow/configs
       - ./.env:/opt/airflow/.env
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -158,6 +159,7 @@ services:
       - ./jobs:/opt/airflow/jobs
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./configs:/opt/airflow/configs
       - ./.env:/opt/airflow/.env
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

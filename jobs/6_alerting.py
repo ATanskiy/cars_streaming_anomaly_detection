@@ -1,3 +1,11 @@
+"""
+Real-time alert detection and processing pipeline.
+Reads enriched car sensor data from Kafka, identifies anomalies (speeding > 120,
+incorrect gear shifts, high RPM > 6000), writes all enriched data with alert flags
+to an Iceberg table for analytics, and streams alert events to a separate Kafka
+topic for immediate notification and action.
+"""
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, to_json, struct, when
 from configs.constants import TOPIC_SENSORS_ENRICHED as TOPIC_INPUT, \

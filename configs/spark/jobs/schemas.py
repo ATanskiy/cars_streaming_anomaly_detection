@@ -1,3 +1,11 @@
+"""
+Spark schema definitions for Kafka message parsing.
+Defines structured schemas for raw sensor events (event metadata, car ID,
+speed, RPM, gear) and enriched events (adds driver info, brand/model/color
+names, and calculated expected gear). Used for parsing JSON messages from
+Kafka streams with proper type casting and validation.
+"""
+
 from pyspark.sql.types import StructType, StructField, StringType, \
       IntegerType, LongType, TimestampType
 

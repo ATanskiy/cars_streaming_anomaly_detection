@@ -24,6 +24,6 @@ dag = DAG(
 
 aggregations_task = BashOperator(
     task_id='compute_aggregations',
-    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py',
+    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py "{{ dag_run.conf.get(\'telegram_chat_id\') }}"',
     dag=dag,
 )

@@ -1,3 +1,11 @@
+"""
+Sample data generation functions for dimension tables.
+Creates static reference data for car models (7 brands/models), car colors
+(7 colors), and generates 20 random car records with unique IDs linking to
+model and color dimensions. Uses random assignment for driver IDs and
+foreign key references to maintain referential integrity.
+"""
+
 import random
 from ...constants import TABLE_CAR_MODELS_COLUMNS, TABLE_CAR_COLORS_COLUMNS, \
       TABLE_CARS_COLUMNS

@@ -148,14 +148,25 @@ async def handle_kill_dag(query, context, data):
 
 async def handle_run_dag(query, context, data):
     dag_id = data.replace("run_", "")
+    chat_id = query.message.chat_id
+    
+    # DEBUG: Log the chat_id
+    logger.info(f"★★★ Chat ID for notifications: {chat_id}")
+    
     await query.edit_message_text(f"Triggering DAG `{dag_id}`...", parse_mode='Markdown')
     
     try:
         session = airflow.get_airflow_session()
         url = f"{config.AIRFLOW_API_URL}/api/v1/dags/{dag_id}/dagRuns"
         
-        # Simplified payload - let Airflow set the execution date
-        payload = {}
+        payload = {
+            "conf": {
+                "telegram_chat_id": str(chat_id)
+            }
+        }
+        
+        # DEBUG: Log the payload
+        logger.info(f"★★★ Payload being sent: {payload}")
         
         response = session.post(url, json=payload)
         response.raise_for_status()
@@ -164,7 +175,8 @@ async def handle_run_dag(query, context, data):
         run_id = run_data.get('dag_run_id', 'unknown')
         
         await query.edit_message_text(
-            f"✅ DAG `{dag_id}` triggered successfully!\nRun ID: `{run_id}`",
+            f"✅ DAG `{dag_id}` triggered successfully!\nRun ID: `{run_id}`\n\n"
+            f"Chat ID: `{chat_id}` - you should receive updates here.",
             parse_mode='Markdown'
         )
     except Exception as e:

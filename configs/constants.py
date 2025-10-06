@@ -26,9 +26,10 @@ KAFKA_BOOTSTRAP_SERVER = 'kafka:9092'
 KAFKA_BOOTSTRAP_SERVERS = "kafka_broker:9092"
 
 # Compaction parameters
-TABLES_TO_COMPACT = [
-        "cars_enriched"
-    ]
+TABLES_TO_COMPACT = {
+    "dims": "cars_enriched",
+    "cars_raw": "cars_raw"
+}
 
 # Superset constants
 SESSION_COOKIE_SAMESITE = "Lax"

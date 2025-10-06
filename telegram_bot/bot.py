@@ -1,3 +1,11 @@
+"""
+Main Telegram bot application for data platform management.
+Provides interactive command interface and menu-driven UI for managing
+Airflow DAGs, running Trino queries, monitoring Spark streaming jobs,
+and accessing Superset dashboards. Handles user commands, button callbacks,
+and error handling with comprehensive logging.
+"""
+
 import logging
 import config
 from telegram import Update
@@ -55,6 +63,7 @@ def main():
     application.add_handler(CommandHandler("count", trino_queries.count_rows))
     application.add_handler(CommandHandler("streaming", spark.check_streaming_jobs))
     application.add_handler(CommandHandler("dashboards", superset.list_dashboards))
+
     
     application.add_handler(CallbackQueryHandler(buttons.button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))

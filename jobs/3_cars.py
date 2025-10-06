@@ -1,3 +1,9 @@
+"""
+Creates and populates the cars Iceberg table.
+Initializes the table schema, generates sample car data with model
+and color references, writes it to the Iceberg table, and displays the results.
+"""
+
 from pyspark.sql import SparkSession
 from configs.constants import SCHEMA_NAME, TABLE_CARS as TABLE_NAME
 from configs.spark.jobs.create_tables import create_cars_table

@@ -1,3 +1,10 @@
+"""
+Kafka data generator for car sensor events.
+Loads car IDs from the dims.cars table and continuously streams
+random sensor data (speed, RPM, gear) to Kafka topic every second.
+Used for testing real-time data processing pipelines.
+"""
+
 from pyspark.sql import SparkSession
 import json, time, random, uuid
 from kafka import KafkaProducer
