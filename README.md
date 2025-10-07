@@ -125,20 +125,4 @@ All tables use Apache Iceberg format with S3 storage.
 
 - See [`docs/`](docs/) for architecture diagrams and usage guides.
 
----
-
-## 🧑‍💻 Contributing
-
-Pull requests and issues are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) if available.
-
----
-
-## 📄 License
-
-See [LICENSE](LICENSE) for details.
-
----
-
-## 💬 Support
-
 For help, use `/help` in the Telegram bot or contact the maintainer.
