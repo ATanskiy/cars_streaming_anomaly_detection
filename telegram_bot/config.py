@@ -20,5 +20,7 @@ SUPERSET_PUBLIC_URL = os.getenv("SUPERSET_PUBLIC_URL")
 SUPERSET_USER = os.getenv("SUPERSET_USER")
 SUPERSET_PASSWORD = os.getenv("SUPERSET_PASSWORD")
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN must be set in .env file")

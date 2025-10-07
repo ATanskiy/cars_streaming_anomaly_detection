@@ -1,3 +1,20 @@
+"""
+Superset dashboard integration handlers for Telegram bot.
+
+This module provides async command handlers for interacting with Apache Superset
+through a Telegram bot interface. It handles authentication and retrieval of
+dashboard information.
+
+Functions:
+    get_superset_token() - Authenticate with Superset API and retrieve access token
+    
+Commands:
+    /dashboards - List available Superset dashboards with their URLs (max 10)
+
+The module uses bearer token authentication and includes error handling with
+logging for all API interactions.
+"""
+
 import logging, requests, config
 from telegram import Update
 from telegram.ext import ContextTypes

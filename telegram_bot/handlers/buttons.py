@@ -1,3 +1,26 @@
+"""
+Telegram bot callback handlers for interactive button menus.
+
+This module handles all inline keyboard button callbacks for the Telegram bot,
+providing interactive interfaces for managing Airflow DAGs and querying Trino databases.
+
+Callback handlers:
+    - DAG operations: dag_menu_, run_, kill_, status_ - Trigger, monitor, and stop Airflow DAGs
+    - Trino browsing: schema_, table_ - Navigate database schemas and tables
+    - Data operations: count_, preview_ - View row counts and data samples
+    - Navigation: action_, back_to_dags - Menu navigation and actions
+
+Key features:
+    - Dynamic button menus with context-aware options
+    - Real-time DAG state detection (running/queued)
+    - Kill button only shown for active DAG runs
+    - Chat ID tracking for DAG run notifications
+    - Integrated error handling and logging
+
+The module coordinates between airflow, trino_queries, and menus handlers to provide
+a seamless interactive experience for data pipeline management.
+"""
+
 import logging, config
 from telegram.ext import ContextTypes
 from handlers import airflow, trino_queries, menus

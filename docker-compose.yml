@@ -97,6 +97,8 @@ services:
       dockerfile: ./docker/Dockerfile.spark
     container_name: spark
     working_dir: /opt/streaming
+    tmpfs:
+      - /tmp:size=4G,exec
     ports:
       - "7077:7077" 
       - "4041:4040"    # Spark UI (different port)
@@ -108,6 +110,8 @@ services:
       - ./configs/spark/hive-site.xml:/opt/spark/conf/hive-site.xml
       - ./configs:/opt/streaming/configs
       - ./jobs:/opt/streaming/jobs
+    env_file:
+      - .env 
     environment:
       SPARK_MODE: ${SPARK_MODE_CLIENT}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}

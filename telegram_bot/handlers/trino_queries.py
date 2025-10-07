@@ -1,3 +1,19 @@
+"""
+Trino database query handlers for Telegram bot.
+
+This module provides async command handlers for interacting with a Trino database
+through a Telegram bot interface. It includes functionality to list schemas and tables,
+execute SELECT queries, and count table rows.
+
+Commands:
+    /schemas - List all available schemas in the Trino catalog
+    /tables <schema> - List all tables in a specified schema
+    /query <SQL> - Execute a SELECT query (limited to 10 results)
+    /count <schema.table> - Count the number of rows in a table
+
+All handlers include error logging and user-friendly error messages.
+"""
+
 import logging, trino, config
 from telegram import Update
 from telegram.ext import ContextTypes

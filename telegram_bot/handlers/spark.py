@@ -1,4 +1,19 @@
-import logging, subprocess
+"""
+Spark streaming job monitoring handlers for Telegram bot.
+
+This module provides async command handlers for monitoring Apache Spark streaming
+jobs running in a Docker container. It checks which predefined streaming jobs are
+currently active by inspecting container processes.
+
+Commands:
+    /jobs - Check which streaming jobs are currently running in the Spark container
+
+The module executes Docker commands to inspect the Spark container's processes and
+matches them against a predefined list of streaming job names from constants. Results
+are formatted with status indicators and include error handling with logging.
+"""
+
+import logging, subprocess, constants
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -22,15 +37,8 @@ async def check_streaming_jobs(update: Update, context: ContextTypes.DEFAULT_TYP
         lines = result.stdout.split('\n')
         streaming_jobs = set()
         
-        job_patterns = [
-            "4_data_generator",
-            "5_enriching",
-            "6_alerting",
-            "7_print_aggregations"
-        ]
-        
         for line in lines:
-            for job in job_patterns:
+            for job in constants.STREAMING_JOBS:
                 if job in line:
                     streaming_jobs.add(job)
                     break

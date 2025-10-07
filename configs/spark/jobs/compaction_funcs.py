@@ -18,9 +18,7 @@ def rewrite_data_files(spark, CATALOG_NAME, SCHEMA_NAME, table_name):
             table => '{CATALOG_NAME}.{SCHEMA_NAME}.{table_name}',
             options => map(
                 'target-file-size-bytes', '134217728',
-                'min-file-size-bytes', '67108864',
-                'partial-progress.enabled', 'true',
-                'partial-progress.max-commits', '10'
+                'min-file-size-bytes', '67108864'
             )
         )
     """)
@@ -37,7 +35,7 @@ def rewrite_manifest_files(spark, CATALOG_NAME, SCHEMA_NAME, table_name):
     print(f"✓ Manifest files rewritten for {full_table_name}")
 
 
-def expire_old_snapshots(spark, CATALOG_NAME, SCHEMA_NAME, table_name, days=1, retain_last=3):
+def expire_old_snapshots(spark, CATALOG_NAME, SCHEMA_NAME, table_name, days=3, retain_last=10):
     """Expire old snapshots."""
     full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{table_name}"
     expire_timestamp = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")

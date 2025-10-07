@@ -6,12 +6,13 @@ and accessing Superset dashboards. Handles user commands, button callbacks,
 and error handling with comprehensive logging.
 """
 
-import logging
-import config
+import logging, config
 from telegram import Update
-from handlers import airflow, trino_queries, buttons, menus, spark, superset
+from handlers import airflow, trino_queries, buttons, spark, superset, ai_agent
 from telegram.ext import Application, CommandHandler, MessageHandler, \
-      CallbackQueryHandler, ContextTypes, filters
+      CallbackQueryHandler, filters
+from start_functions import start, help_command, error_handler, handle_menu_button, \
+    show_about
 
 
 logging.basicConfig(
@@ -21,48 +22,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await menus.show_main_menu(update, context)
-
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🔧 *Airflow Commands:*\n"
-        "/dags - List all DAGs\n"
-        "/run <dag_id> - Trigger a DAG\n"
-        "/status <dag_id> - Check DAG status\n"
-        "/kill <dag_id> <run_id> - Kill a running DAG\n"
-        "/recent - Recent DAG runs\n\n",
-        parse_mode='Markdown'
-    )
-
-
-async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await menus.handle_button_text(update, context)
-
-
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Update {update} caused error {context.error}")
-    if update and update.message:
-        await update.message.reply_text(f"❌ An error occurred: {str(context.error)}")
-
-
 def main():
     application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("info", show_about))
+
+    # Airflow commands
     application.add_handler(CommandHandler("dags", airflow.list_dags))
     application.add_handler(CommandHandler("run", airflow.trigger_dag))
     application.add_handler(CommandHandler("status", airflow.dag_status))
     application.add_handler(CommandHandler("kill", airflow.kill_dag))
     application.add_handler(CommandHandler("recent", airflow.recent_runs))
+
+    # Trino commands
     application.add_handler(CommandHandler("schemas", trino_queries.list_schemas))
     application.add_handler(CommandHandler("tables", trino_queries.list_tables))
     application.add_handler(CommandHandler("query", trino_queries.run_query))
     application.add_handler(CommandHandler("count", trino_queries.count_rows))
+
+    # Spark Commands
     application.add_handler(CommandHandler("streaming", spark.check_streaming_jobs))
     application.add_handler(CommandHandler("dashboards", superset.list_dashboards))
+
+    # AI agent
+    application.add_handler(CommandHandler("ai", ai_agent.start_ai_mode))
 
     
     application.add_handler(CallbackQueryHandler(buttons.button_callback))

@@ -18,16 +18,21 @@ dag = DAG(
     '8_iceberg_compaction',
     default_args=default_args,
     description='Compact Iceberg tables to optimize storage and query performance',
-    schedule_interval='0 */6 * * *',  # Run daily at 2 AM
+    schedule_interval='0 2 * * *',  # Run daily at 2 AM
     catchup=False,
     tags=['maintenance', 'iceberg', 'compaction'],
 )
 
+previous_task = None
 for schema_name, table_name in TABLES_TO_COMPACT.items():
     task_id = f'compact_{schema_name}_{table_name}'
     
-    BashOperator(
+    task = BashOperator(
         task_id=task_id,
         bash_command=f'docker exec spark spark-submit /opt/streaming/jobs/8_table_compaction.py {schema_name} {table_name}',
         dag=dag,
     )
+
+    if previous_task:
+        previous_task >> task
+    previous_task = task

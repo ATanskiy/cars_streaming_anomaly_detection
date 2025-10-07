@@ -19,7 +19,7 @@ Memory management: Explicit garbage collection between operations prevents memor
 buildup during long-running maintenance jobs.
 """
 
-import sys
+import sys, time, os
 from pyspark.sql import SparkSession
 from configs.constants import CATALOG_NAME
 from configs.spark.jobs.compaction_funcs import (
@@ -37,16 +37,24 @@ if len(sys.argv) != 3:
 SCHEMA_NAME = sys.argv[1]
 TABLE_NAME = sys.argv[2]
 
+# CRITICAL: Set Java temp directory BEFORE creating SparkSession
+os.environ['JAVA_OPTS'] = '-Djava.io.tmpdir=/opt/spark/work-dir/tmp'
+
 spark = SparkSession.builder \
     .appName(f"IcebergCompaction_{SCHEMA_NAME}_{TABLE_NAME}") \
     .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog") \
     .config("spark.sql.catalog.iceberg.type", "hive") \
     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
-    .config("spark.driver.memory", "4g") \
-    .config("spark.executor.memory", "4g") \
+    .config("spark.driver.memory", "2g") \
+    .config("spark.executor.memory", "2g") \
     .config("spark.sql.autoBroadcastJoinThreshold", "-1") \
     .config("spark.memory.fraction", "0.6") \
-    .enableHiveSupport() \
+    .config("spark.sql.shuffle.partitions", "8") \
+    .config("spark.sql.adaptive.enabled", "true") \
+    .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+    .config("spark.speculation", "false") \
+    .config("spark.shuffle.file.buffer", "128k") \
+    .config("spark.io.compression.codec", "lz4") \
     .getOrCreate()
 
 print("=" * 60)
@@ -58,12 +66,15 @@ full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_NAME}"
 try:
     rewrite_data_files(spark, CATALOG_NAME, SCHEMA_NAME, TABLE_NAME)
     spark.sparkContext._jvm.System.gc()
+    time.sleep(5)
 
     rewrite_manifest_files(spark, CATALOG_NAME, SCHEMA_NAME, TABLE_NAME)
     spark.sparkContext._jvm.System.gc()
+    time.sleep(5)
 
     expire_old_snapshots(spark, CATALOG_NAME, SCHEMA_NAME, TABLE_NAME)
     spark.sparkContext._jvm.System.gc()
+    time.sleep(5)
 
     remove_orphan_files(spark, CATALOG_NAME, SCHEMA_NAME, TABLE_NAME)
     spark.sparkContext._jvm.System.gc()
