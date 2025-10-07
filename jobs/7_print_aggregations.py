@@ -24,7 +24,7 @@ samples_enriched = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe", TOPIC_INPUT) \
-    .option("startingOffsets", "earliest") \
+    .option("startingOffsets", "latest") \
     .option("failOnDataLoss", "false") \
     .load()
 
@@ -52,7 +52,7 @@ aggregated_df = parsed_alerts_df \
 query = aggregated_df \
     .writeStream \
     .foreachBatch(send_batch) \
-    .outputMode("update") \
+    .outputMode("append") \
     .trigger(processingTime="1 minute") \
     .option("checkpointLocation", "/tmp/checkpoints/alerts_telegram") \
     .start()

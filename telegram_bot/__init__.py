@@ -1,4 +1,4 @@
 # Handlers package
 from . import airflow, trino_queries, buttons, menus
 
-__all__ = ['airflow', 'trino_queries', 'buttons', 'menus', 'spark', 'superset']
+__all__ = ['airflow', 'trino_queries', 'buttons', 'menus', 'spark', 'superset', 'ai_agent']

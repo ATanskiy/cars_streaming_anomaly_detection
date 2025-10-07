@@ -13,6 +13,8 @@ default_args = {
     'execution_timeout': None,
 }
 
+DEFAULT_CHAT_ID = "690514325"
+
 dag = DAG(
     '7_print_aggregations',
     default_args=default_args,
@@ -24,6 +26,6 @@ dag = DAG(
 
 aggregations_task = BashOperator(
     task_id='compute_aggregations',
-    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py "{{ dag_run.conf.get(\'telegram_chat_id\') }}"',
+    bash_command='docker exec spark spark-submit /opt/streaming/jobs/7_print_aggregations.py "{{ dag_run.conf.get(\'telegram_chat_id\', \'' + DEFAULT_CHAT_ID + '\') }}"',
     dag=dag,
 )

@@ -7,9 +7,10 @@ Used by the alert counter job's foreachBatch processing.
 """
 
 import sys, os, requests
+from pyspark.sql.functions import current_timestamp, expr
 
 # Get chat_id from command line argument (first argument passed to the script)
-telegram_chat_id = sys.argv[1] #if len(sys.argv) > 1 else "690514325"
+telegram_chat_id = sys.argv[1] if len(sys.argv) > 1 else "690514325"
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
 def send_telegram_message(chat_id, message):

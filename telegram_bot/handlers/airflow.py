@@ -1,9 +1,25 @@
 """
-Airflow DAG management handler for Telegram bot.
-Provides commands to list, trigger, monitor, and kill Airflow DAGs via
-REST API. Authenticates using basic auth, formats responses with status
-emojis, and handles errors gracefully. Supports listing all DAGs, checking
-recent runs, viewing DAG execution status, and stopping running workflows.
+Airflow DAG management handlers for Telegram bot.
+
+This module provides async command handlers for managing Apache Airflow DAGs
+through a Telegram bot interface. It uses Airflow's REST API with HTTP Basic
+Authentication to perform DAG operations.
+
+Functions:
+    get_airflow_session() - Create authenticated requests session with Airflow credentials
+
+Commands:
+    /dags - List all available DAGs with their paused/active status
+    /run <dag_id> - Trigger a DAG run and receive the run ID
+    /status <dag_id> - View the 5 most recent run statuses for a DAG
+    /recent - Display the 10 most recent DAG runs across all DAGs
+    /kill <dag_id> <run_id> - Stop a running DAG by setting its state to failed
+
+Features:
+    - Status emojis for visual feedback (✅ success, 🔄 running, ❌ failed, ⏳ queued)
+    - Formatted timestamps and run information
+    - Comprehensive error handling with 404 detection
+    - Logging for debugging and monitoring
 """
 
 import logging, requests, config
@@ -55,12 +71,17 @@ async def trigger_dag(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     dag_id = context.args[0]
+    chat_id = update.message.chat_id 
     
     try:
         session = get_airflow_session()
         url = f"{config.AIRFLOW_API_URL}/api/v1/dags/{dag_id}/dagRuns"
         
-        payload = {}  # Empty payload, let Airflow handle defaults
+        payload = {
+            "conf": {
+                "telegram_chat_id": str(chat_id)
+            }
+        }
         
         response = session.post(url, json=payload)
         response.raise_for_status()

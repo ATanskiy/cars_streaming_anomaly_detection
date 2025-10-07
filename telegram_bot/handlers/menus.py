@@ -1,6 +1,6 @@
 import logging, config
 from telegram.ext import ContextTypes
-from handlers import airflow, trino_queries, spark, superset
+from handlers import airflow, trino_queries, spark, superset, ai_agent
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, \
       InlineKeyboardMarkup
 
@@ -13,7 +13,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ["📋 List DAGs", "🕐 Recent Runs"],
         ["📂 List Schemas", "📊 Query Data"],
         ["🔥 Streaming Jobs", "📈 Dashboards"],
-        ["❓ Help"]
+        ["🤖 AI Assistant", "❓ Help"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
@@ -28,7 +28,17 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_button_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
-    if text == "📋 List DAGs":
+    if text == "🤖 AI Assistant":
+        # If already in AI mode, just acknowledge
+        if context.user_data.get('ai_mode', False):
+            await update.message.reply_text(
+                "🤖 You're already in AI mode!\n\n"
+                "Just type your questions naturally.\n"
+                "Click any button to exit AI mode and use normal controls."
+            )
+        else:
+            await ai_agent.start_ai_mode(update, context)
+    elif text == "📋 List DAGs":
         await show_dags_with_buttons(update, context)
     elif text == "🕐 Recent Runs":
         await airflow.recent_runs(update, context)
@@ -42,6 +52,8 @@ async def handle_button_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await superset.list_dashboards(update, context)
     elif text == "❓ Help":
         await update.message.reply_text(
+            "ℹ️ *About the Platform*\n"
+            "/info - Get info about the platform\n\n"
             "🔧 *Airflow Commands:*\n"
             "/dags - List all DAGs\n"
             "/run <dag_id> - Trigger a DAG\n"
@@ -52,6 +64,9 @@ async def handle_button_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "/tables <schema> - List tables in schema\n"
             "/query <sql> - Run SQL query\n"
             "/count <table> - Count rows in table\n\n"
+            "🤖 *AI Assistant:*\n"
+            "/ai - Start AI assistant mode\n"
+            "Chat naturally to control everything!\n\n"
             "Or use the buttons!",
             parse_mode='Markdown'
         )
